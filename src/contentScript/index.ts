@@ -1,8 +1,7 @@
 // when a user focuses on a text input, we will show a pop up with a input inside it.
 // when user enters message in the input in popup, we will encrypt the message in the background and show the encrypted message in the input field.
 
-import { decryptMessage, encryptMessage } from '../utils'
-import * as openpgp from 'openpgp'
+import CryptoJS from 'crypto-js'
 
 // create a div element
 
@@ -70,13 +69,9 @@ document?.getElementById('popup-button').addEventListener('click', async functio
   localStorage.getItem('privateKey') && (privateKey = localStorage.getItem('privateKey')!)
 
   // encrypt the message
-  const encryptedMessage = await encryptMessage({
-    publicKey: await openpgp.readKey({ armoredKey: publicKey }),
-    privateKey: await openpgp.readPrivateKey({ armoredKey: privateKey }),
-    message,
-  })
+  const encryptedMessage = await CryptoJS.AES.encrypt(message, 'Secret Passphrase')
 
-  setTextInWhatsAppInputBox(encryptedMessage)
+  setTextInWhatsAppInputBox('encrypted:' + encryptedMessage)
 })
 
 function setTextInWhatsAppInputBox(text) {
@@ -112,3 +107,24 @@ function setTextInWhatsAppInputBox(text) {
     console.error('Message input box not found')
   }
 }
+
+const findPGPMessages = (): HTMLSpanElement[] => {
+  const spans = Array.from(document.getElementsByTagName('span'))
+  return spans.filter((span) => span.innerHTML.startsWith('encrypted:'))
+}
+
+const replacePGPMessagesInHTML = async () => {
+  const pgpMessageSpans = findPGPMessages()
+
+  for (const span of pgpMessageSpans) {
+    const encryptedMessage = span.innerHTML.toString().split('encrypted:')[1]
+
+    var decrypted = CryptoJS.AES.decrypt(encryptedMessage, 'Secret Passphrase').toString(
+      CryptoJS.enc.Utf8,
+    )
+
+    span.innerHTML = decrypted
+  }
+}
+
+setInterval(replacePGPMessagesInHTML, 5000)
